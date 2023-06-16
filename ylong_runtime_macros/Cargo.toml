@@ -1,0 +1,18 @@
+[package]
+name = "ylong_runtime_macros"
+version = "1.11.0"
+edition = "2021"
+description = "Ylong_runtime Procedure Macro"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://open.codehub.huawei.com/innersource/Ylong_Rust/ylong_rs/files?ref=master&filePath=src%2Fschedule%2Fylong_runtime_macro"
+keywords = ["Ylong", "Runtime", "Procedure", "Macro"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0.104", features = ["full", "extra-traits"] }
+quote = "1.0.23"
+proc-macro2 = "1.0.53"
+

@@ -1,0 +1,40 @@
+[package]
+name = "ylong_io"
+version = "0.1.0"
+edition = "2018"
+description = "IO module of YLong"
+readme = "README.md"
+license = "Apache-2.0"
+repository = "https://open.codehub.huawei.com/innersource/Ylong_Rust/ylong_rs/files?ref=master&filePath=src%2Fschedule%2Fylong_io"
+keywords = ["ylong", "io", "epoll"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = ["tcp","udp"]
+udp = []
+tcp = []
+
+[dependencies]
+libc = "0.2.134"
+
+[target."cfg(windows)".dependencies.windows-sys]
+version = "0.45"
+features = [
+    "Win32_Foundation",
+    "Win32_Networking_WinSock",
+    "Win32_Storage_FileSystem",
+    "Win32_System_IO",
+    "Win32_System_WindowsProgramming",
+    "Win32_Storage_FileSystem",
+]
+
+[[example]]
+name = "ylong_io_tcp_client"
+path = "examples/ylong_io_tcp_client.rs"
+required-features = ["tcp"]
+
+[[example]]
+name = "ylong_io_tcp_server"
+path = "examples/ylong_io_tcp_server.rs"
+required-features = ["tcp"]
