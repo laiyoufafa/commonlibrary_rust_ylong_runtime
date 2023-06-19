@@ -1,0 +1,15 @@
+[package]
+name = "ylong_ffrt"
+version = "0.1.0"
+authors = ["f00567414 <fanchangchun@huawei.com>"]
+edition = "2021"
+description = "Runtime Environment"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://open.codehub.huawei.com/innersource/Ylong_Rust/ylong_rs/files?ref=ylong_oh&filePath=src%2Fruntime%2Fylong_ffrt"
+keywords = ["ylong", "ffrt"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libc = "0.2.134"

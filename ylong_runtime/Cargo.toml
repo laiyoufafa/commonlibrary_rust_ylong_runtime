@@ -1,0 +1,219 @@
+[package]
+name = "ylong_runtime"
+version = "1.9.0"
+edition = "2018"
+description = "Runtime Environment"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://open.codehub.huawei.com/innersource/Ylong_Rust/ylong_rs/files?ref=master&filePath=src%2Fschedule%2Fylong_runtime"
+keywords = ["ylong", "runtime", "executor"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+
+full = [
+    "net",
+    "multi_instance_runtime",
+    "current_thread_runtime",
+    "sync",
+    "time",
+    "fs",
+    "macros"
+]
+
+ffrt_full = [
+    "net",
+    "sync",
+    "time",
+    "fs",
+    "current_thread_runtime",
+    "macros",
+    "ffrt",
+]
+
+# This feature controls the executor type runs below the runtime.
+# If turned off, ffrt executor will be selected.
+# If turned on, ylong executor will be selected.
+ffrt = ["ylong_ffrt"]
+
+# This feature controls whether the runtime is singleton.
+# If turned on, there could be mulitple executors running with their own thread pool.
+multi_instance_runtime = []
+
+# This controls whether to enable the functionality to turn the current thread into a single-thread runtime.
+current_thread_runtime = []
+
+# Async file io components
+fs = ["sync"]
+
+# Coroutine synchronization components (mutex, channel, etc.)
+sync = []
+
+# Timer component
+time = []
+
+# Async IO components
+net = ["ylong_io/tcp", "ylong_io/udp"]
+
+# Macro components
+macros = ["ylong_runtime_macros"]
+
+[dependencies]
+libc = "0.2.134"
+ylong_io = { path = "../ylong_io", optional = true }
+ylong_ffrt = { path = "../ylong_ffrt", optional = true }
+ylong_runtime_macros = { path = "../ylong_runtime_macros", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1.25", features = ["full"] }
+
+[package.metadata.doc.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docrs"]
+
+[[bench]]
+name = "ylong_tokio_mutex"
+path = "benches/ylong_tokio_mutex.rs"
+required-features = ["sync"]
+
+[[bench]]
+name = "ylong_tokio_rwlock"
+path = "benches/ylong_tokio_rwlock.rs"
+required-features = ["sync"]
+
+[[bench]]
+name = "ylong_tokio_tcp"
+path = "benches/ylong_tokio_tcp.rs"
+required-features = ["net"]
+
+[[bench]]
+name = "ylong_tokio_udp"
+path = "benches/ylong_tokio_udp.rs"
+required-features = ["net"]
+
+[[bench]]
+name = "ylong_tokio_multi_threaded"
+path = "benches/ylong_tokio_multi_threaded.rs"
+required-features = ["net"]
+
+[[example]]
+name = "ylong_runtime_tcp_client_perf"
+path = "benches/bin/ylong_runtime_tcp_client_perf.rs"
+required-features = ["net", "multi_instance_runtime"]
+
+[[example]]
+name = "ylong_runtime_tcp_server_perf"
+path = "benches/bin/ylong_runtime_tcp_server_perf.rs"
+required-features = ["net", "multi_instance_runtime"]
+
+[[example]]
+name = "ylong_runtime_async_benchmark"
+path = "benches/bin/ylong_runtime_async_benchmark.rs"
+required-features = ["net", "multi_instance_runtime"]
+
+[[example]]
+name = "ylong_sync_mutex_perf"
+path = "benches/bin/ylong_sync_mutex_perf.rs"
+required-features = ["sync"]
+
+[[example]]
+name = "ylong_sync_rwlock_perf"
+path = "benches/bin/ylong_sync_rwlock_perf.rs"
+required-features = ["sync"]
+
+[[example]]
+name = "ylong_runtime_tcp"
+path = "./examples/ylong_runtime_tcp.rs"
+required-features = ["net"]
+
+[[example]]
+name = "ylong_runtime_multi_runtimes"
+path = "./examples/ylong_runtime_multi_runtimes.rs"
+required-features = ["multi_instance_runtime"]
+
+[[example]]
+name = "ylong_runtime_memory"
+path = "examples/ylong_runtime_memory.rs"
+required-features = ["multi_instance_runtime"]
+
+[[example]]
+name = "ylong_runtime_timer_sleep"
+path = "examples/ylong_runtime_timer_sleep.rs"
+required-features = ["time", "multi_instance_runtime"]
+
+[[test]]
+name = "tcp_test"
+path = "tests/tcp_test.rs"
+required-features = ["net"]
+
+[[test]]
+name = "udp_test"
+path = "tests/udp_test.rs"
+required-features = ["net"]
+
+[[test]]
+name = "async_dir"
+path = "tests/async_dir.rs"
+required-features = ["fs"]
+
+[[test]]
+name = "async_fs"
+path = "tests/async_fs.rs"
+required-features = ["fs", "multi_instance_runtime"]
+
+[[test]]
+name = "async_read"
+path = "tests/async_read.rs"
+required-features = ["net"]
+
+[[test]]
+name = "spawn_blocking"
+path = "tests/spawn_blocking.rs"
+required-features = ["multi_instance_runtime"]
+
+[[test]]
+name = "async_pool"
+path = "tests/async_pool.rs"
+required-features = ["multi_instance_runtime"]
+
+[[test]]
+name = "builder"
+path = "tests/builder.rs"
+required-features = ["multi_instance_runtime"]
+
+[[test]]
+name = "sync"
+path = "tests/sync.rs"
+required-features = ["sync", "multi_instance_runtime"]
+
+[[test]]
+name = "block_on"
+path = "tests/block_on.rs"
+required-features = ["multi_instance_runtime"]
+
+[[test]]
+name = "spawn"
+path = "tests/spawn.rs"
+required-features = ["multi_instance_runtime"]
+
+[[test]]
+name = "timer_test"
+path = "tests/timer_test.rs"
+required-features = ["time", "sync"]
+
+[[test]]
+name = "mpsc_test"
+path = "tests/mpsc_test.rs"
+required-features = ["sync", "time"]
+
+[[test]]
+name = "async_buf_read"
+path = "tests/async_buf_read.rs"
+required-features = ["fs", "net"]
+
+[[test]]
+name = "async_buf_write"
+path = "tests/async_buf_write.rs"
+required-features = ["fs", "net"]
