@@ -1,0 +1,8 @@
+[workspace]
+resolver = "2"
+members = [
+    "ylong_ffrt",
+    "ylong_io",
+    "ylong_runtime",
+    "ylong_runtime_macros"
+]
