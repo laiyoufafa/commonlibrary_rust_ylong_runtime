@@ -42,7 +42,7 @@ fn main() -> std::io::Result<()> {
 
 #### 线程池设置
 
-可以链式设置runtime的具体配置。必须在`block_on`，`spawn`之前设置，否则runtime会使用默认配置。
+可以链式设置runtime的具体配置。必须在`block_on`，`spawn`之前设置，否则`runtime`会使用默认配置。
 
 ```rust
 fn main() {
