@@ -44,7 +44,7 @@ fn main() -> std::io::Result<()> {
 
 #### Thread pool settings
 
-The specific settings of runtime can be chained, Must be set before `block_on` and `spawn`, otherwise `runtime` will use the default configuration.
+Users can set the config of the runtime, which must be set before `block_on` and `spawn`, otherwise `runtime` will use the default configuration.
 
 ```rust
 fn main() {
