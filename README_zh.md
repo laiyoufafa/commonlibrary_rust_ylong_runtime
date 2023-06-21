@@ -79,7 +79,7 @@ fn main() {
 
 ### ParIter 功能介绍
 
-`ParIter` 及其相关接口定义于模块 `ylong_runtime::iter`，ParIter支持数据在线程中做并行迭代，一组数据会在线程中被分割，分割后的数据会在线程中并行执行迭代器中的操作。
+`ParIter` 及其相关接口定义于模块 `ylong_runtime::iter`，`ParIter`支持数据在线程中做并行迭代，一组数据会在线程中被分割，分割后的数据会在线程中并行执行迭代器中的操作。
 
 ```rust
 use ylong_runtime::iter::prelude::*;

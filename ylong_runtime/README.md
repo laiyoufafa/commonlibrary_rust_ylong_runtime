@@ -76,7 +76,7 @@ fn main() {
 
 ### ParIter Introduction
 
-ParIter and its related interfaces are defined in the module `ylong_runtime::iter`. ParIter supports parallel iterations over threads, where a set of data is split and the split data performs the operations in the iterator in parallel over the threads.
+ParIter and its related interfaces are defined in the module `ylong_runtime::iter`. `ParIter` supports parallel iterations over threads, where a set of data is split and the split data performs the operations in the iterator in parallel over the threads.
 
 ```rust
 use ylong_runtime::iter::prelude::*;
