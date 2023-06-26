@@ -293,19 +293,19 @@ mod test {
         let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
-        spawner.block_on(async move { YieldTask { cnt: 1 }.await });
+        spawner.block_on(YieldTask { cnt: 1 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
 
         let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
-        spawner.block_on(async move { YieldTask { cnt: 2 }.await });
+        spawner.block_on(YieldTask { cnt: 2 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
 
         let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
-        spawner.block_on(async move { YieldTask { cnt: 3 }.await });
+        spawner.block_on(YieldTask { cnt: 3 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
     }
 
@@ -323,19 +323,19 @@ mod test {
         let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
-        spawner.block_on(async move { YieldTask { cnt: 1 }.await });
+        spawner.block_on(YieldTask { cnt: 1 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
 
         let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
-        spawner.block_on(async move { YieldTask { cnt: 2 }.await });
+        spawner.block_on(YieldTask { cnt: 2 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 1);
 
         let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
-        spawner.block_on(async move { YieldTask { cnt: 3 }.await });
+        spawner.block_on(YieldTask { cnt: 3 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 0);
     }
 

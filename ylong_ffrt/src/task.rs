@@ -170,7 +170,7 @@ extern "C" {
     /// Submits a task.
     pub fn ffrt_submit_h_coroutine(
         data: *mut c_void,         // void* callable,
-        fp: FfrtExecHook,              // ffrt_function_t exec,
+        fp: FfrtExecHook,          // ffrt_function_t exec,
         destroy_fp: FfrtHook,      // ffrt_function_t destroy,
         in_deps: *const FfrtDeps,  //const ffrt_deps_t* in_deps,
         out_deps: *const FfrtDeps, //const ffrt_deps_t* out_deps,
