@@ -28,8 +28,6 @@ ffrt_full = [
     "sync",
     "time",
     "fs",
-    "current_thread_runtime",
-    "macros",
     "ffrt",
 ]
 

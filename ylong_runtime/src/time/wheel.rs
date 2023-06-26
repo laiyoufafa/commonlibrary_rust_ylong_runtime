@@ -313,12 +313,15 @@ fn level_range(level: usize) -> u64 {
 
 #[cfg(test)]
 mod test {
-    use crate::net::UdpSocket;
+    use crate::macros::cfg_io;
     use crate::time::wheel::{Wheel, LEVELS_NUM};
-    use crate::time::{sleep, timeout, Driver};
-    use crate::JoinHandle;
-    use std::net::SocketAddr;
-    use std::time::Duration;
+    cfg_io!(
+        use crate::time::{sleep, timeout, Driver};
+        use crate::net::UdpSocket;
+        use crate::JoinHandle;
+        use std::net::SocketAddr;
+        use std::time::Duration;
+    );
 
     /// Wheel::new ut test case.
     ///
@@ -346,6 +349,7 @@ mod test {
     /// 2. Enable the Sleep Struct corresponding to the Timeout Struct to enter the Pending state.
     /// 3. Verify the change of the internal TimerHandle during Sleep Struct drop.
     #[test]
+    #[cfg(feature = "net")]
     fn ut_sleep_drop() {
         async fn udp_sender(sender_addr: SocketAddr, receiver_addr: SocketAddr) {
             let sender = UdpSocket::bind(sender_addr).await.unwrap();

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-use crate::cfg_io;
 #[cfg(all(feature = "net", feature = "ffrt"))]
 use crate::net::Driver as NetDriver;
 #[cfg(feature = "time")]
@@ -22,10 +21,9 @@ use std::cell::RefCell;
 use std::sync::Arc;
 use std::thread;
 
-cfg_io! {
-    use std::time::Duration;
-    const NET_POLL_INTERVAL_TIME: Duration = Duration::from_millis(10);
-}
+#[cfg(any(not(feature = "ffrt"), all(feature = "net", feature = "ffrt")))]
+const NET_POLL_INTERVAL_TIME: std::time::Duration = std::time::Duration::from_millis(10);
+
 /// Net poller thread creation and management
 #[derive(Clone)]
 pub(crate) struct NetLooper {

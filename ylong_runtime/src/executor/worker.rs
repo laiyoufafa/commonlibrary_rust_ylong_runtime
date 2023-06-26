@@ -19,19 +19,54 @@ use crate::executor::parker::Parker;
 use crate::executor::queue::LocalQueue;
 use crate::task::yield_now::wake_yielded_tasks;
 use crate::task::Task;
+#[cfg(feature = "net")]
+use crate::net::Handle;
 use std::cell::{Cell, RefCell};
 use std::ptr;
 use std::sync::Arc;
 use std::task::Waker;
 
-pub(crate) struct WorkerContext {
-    pub(crate) worker: Arc<Worker>,
-    pub(crate) lifo: RefCell<Option<Task>>,
-    pub(crate) yielded: RefCell<Vec<Waker>>,
+thread_local! {
+    pub(crate) static CURRENT_WORKER : Cell<* const ()> = Cell::new(ptr::null());
 }
 
-thread_local! {
-    static CURRENT_WORKER : Cell<* const ()> = Cell::new(ptr::null());
+pub(crate) enum WorkerContext {
+    Multi(MultiWorkerContext),
+    #[cfg(feature = "net")]
+    Curr(CurrentWorkerContext)
+}
+
+#[cfg(feature = "net")]
+macro_rules! get_multi_worker_context {
+    ($e:expr) => {
+        match $e {
+            crate::executor::worker::WorkerContext::Multi(ctx) => ctx,
+            crate::executor::worker::WorkerContext::Curr(_) => unreachable!(),
+        }
+    };
+}
+
+#[cfg(not(feature = "net"))]
+macro_rules! get_multi_worker_context {
+    ($e:expr) => {
+        {
+            let crate::executor::worker::WorkerContext::Multi(ctx) = $e;
+            ctx
+        }
+    };
+}
+
+pub(crate) use get_multi_worker_context;
+
+pub(crate) struct MultiWorkerContext {
+    pub(crate) worker: Arc<Worker>,
+    #[cfg(feature = "net")]
+    pub(crate) handle: Arc<Handle>
+}
+
+#[cfg(feature = "net")]
+pub(crate) struct CurrentWorkerContext {
+    pub(crate) handle: Arc<Handle>
 }
 
 /// Gets the worker context of the current thread
@@ -47,7 +82,7 @@ pub(crate) fn get_current_ctx() -> Option<&'static WorkerContext> {
     })
 }
 
-impl WorkerContext {
+impl MultiWorkerContext {
     fn run(&mut self) {
         let worker_ref = &self.worker;
         worker_ref.run();
@@ -59,12 +94,16 @@ impl WorkerContext {
 }
 
 /// Runs the worker thread
-pub(crate) fn run_worker(worker: Arc<Worker>) {
-    let mut cur_context = WorkerContext {
+pub(crate) fn run_worker(
+    worker: Arc<Worker>,
+    #[cfg(feature = "net")]
+    handle: Arc<Handle>,
+) {
+    let cur_context = WorkerContext::Multi( MultiWorkerContext {
         worker,
-        lifo: RefCell::new(None),
-        yielded: RefCell::new(Vec::new()),
-    };
+        #[cfg(feature = "net")]
+        handle,
+    });
 
     struct Reset(*const ());
 
@@ -80,6 +119,7 @@ pub(crate) fn run_worker(worker: Arc<Worker>) {
         Reset(prev)
     });
 
+    let mut cur_context = get_multi_worker_context!(cur_context);
     cur_context.run();
     cur_context.release();
 }
@@ -88,6 +128,8 @@ pub(crate) struct Worker {
     pub(crate) index: u8,
     pub(crate) scheduler: Arc<MultiThreadScheduler>,
     pub(crate) inner: RefCell<Box<Inner>>,
+    pub(crate) lifo: RefCell<Option<Task>>,
+    pub(crate) yielded: RefCell<Vec<Waker>>,
 }
 
 unsafe impl Send for Worker {}
@@ -144,10 +186,10 @@ impl Worker {
 
     fn get_task(&self, inner: &mut Inner) -> Option<Task> {
         // We're under worker environment, so it's safe to unwrap
-        let ctx = get_current_ctx().unwrap();
+        let ctx = get_multi_worker_context!(get_current_ctx().expect("worker get_current_ctx() fail"));
 
         // schedule lifo task first
-        let mut lifo_slot = ctx.lifo.borrow_mut();
+        let mut lifo_slot = ctx.worker.lifo.borrow_mut();
         if let Some(task) = lifo_slot.take() {
             return Some(task);
         }
@@ -172,10 +214,10 @@ impl Worker {
     }
 
     fn park_timeout(&self, inner: &mut Inner) {
-        let ctx = get_current_ctx().unwrap();
+        let ctx = get_multi_worker_context!(get_current_ctx().unwrap());
 
         // still has works to do, go back to work
-        if ctx.lifo.borrow().is_some() || !inner.run_queue.is_empty() {
+        if ctx.worker.lifo.borrow().is_some() || !inner.run_queue.is_empty() {
             return;
         }
 
@@ -185,7 +227,7 @@ impl Worker {
 
         while !inner.is_cancel {
             inner.parker.park();
-            if ctx.lifo.borrow().is_some() {
+            if ctx.worker.lifo.borrow().is_some() {
                 inner.is_searching = !self.scheduler.wake_up_specific_one(self.index as usize);
                 break;
             }
@@ -250,7 +292,7 @@ impl Inner {
         if self.count & GLOBAL_PERIODIC_INTERVAL as u32 == 0 {
             self.check_cancel(worker);
             #[cfg(feature = "net")]
-            if let Some(mut driver) = crate::net::Driver::try_get_mut() {
+            if let Ok(mut driver) = self.parker.get_driver().try_lock() {
                 let _ = driver
                     .drive(Some(std::time::Duration::from_millis(0)))
                     .expect("io driver failed");
