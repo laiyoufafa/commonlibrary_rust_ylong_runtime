@@ -307,6 +307,10 @@ fn sdv_async_fs_set_permission() {
         perms.set_readonly(true);
         let ret = file.set_permissions(perms).await;
         assert!(ret.is_ok());
+        let mut perms = file.metadata().await.unwrap().permissions();
+        perms.set_readonly(false);
+        let ret = file.set_permissions(perms).await;
+        assert!(ret.is_ok());
     });
     runtime.block_on(handle).unwrap();
     fs::remove_file("./tests/tmp_file5").unwrap();
