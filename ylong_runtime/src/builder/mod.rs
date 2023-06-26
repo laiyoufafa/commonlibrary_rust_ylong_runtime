@@ -35,13 +35,23 @@ use std::io;
 use std::sync::Arc;
 
 pub(crate) use crate::builder::common_builder::CommonBuilder;
+use crate::cfg_not_ffrt;
 use crate::error::ScheduleError;
-#[cfg(not(feature = "ffrt"))]
-use crate::executor::async_pool::AsyncPoolSpawner;
 use crate::executor::blocking_pool::BlockPoolSpawner;
+#[cfg(any(feature = "net", feature = "time"))]
+use crate::executor::netpoller::NetLooper;
 #[cfg(feature = "current_thread_runtime")]
 pub use current_thread_builder::CurrentThreadBuilder;
 pub use multi_thread_builder::MultiThreadBuilder;
+#[cfg(any(feature = "net", feature = "time"))]
+use std::sync::Once;
+cfg_not_ffrt!(
+    use crate::executor::async_pool::AsyncPoolSpawner;
+    #[cfg(feature = "net")]
+    use crate::net::{Driver, Handle};
+    #[cfg(feature = "net")]
+    use std::sync::Mutex;
+);
 
 /// A callback function to be executed in different stages of a thread's life-cycle
 pub type CallbackHook = Arc<dyn Fn() + Send + Sync + 'static>;
@@ -124,13 +134,22 @@ impl RuntimeBuilder {
 #[cfg(not(feature = "ffrt"))]
 pub(crate) fn initialize_async_spawner(
     builder: &MultiThreadBuilder,
+    #[cfg(feature = "net")] io_driver: (Arc<Handle>, Arc<Mutex<Driver>>),
 ) -> io::Result<AsyncPoolSpawner> {
-    let async_spawner = AsyncPoolSpawner::new(builder);
-    async_spawner.create_async_thread_pool();
+    let async_spawner = AsyncPoolSpawner::new(
+        builder,
+        #[cfg(feature = "net")]
+        io_driver.0,
+    );
+    async_spawner.create_async_thread_pool(
+        #[cfg(feature = "net")]
+        io_driver.1,
+    );
 
     // initialize reactor
     #[cfg(any(feature = "net", feature = "time"))]
     initialize_reactor()?;
+
     Ok(async_spawner)
 }
 
@@ -152,9 +171,6 @@ pub(crate) fn initialize_blocking_spawner(
 
 #[cfg(any(feature = "time", feature = "net"))]
 pub(crate) fn initialize_reactor() -> io::Result<()> {
-    use crate::executor::netpoller::NetLooper;
-    use std::sync::Once;
-
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
         let net_poller = NetLooper::new();
@@ -189,7 +205,6 @@ mod test {
      * @auto   true
      */
     #[test]
-
     fn ut_thread_pool_builder_new() {
         let thread_pool_builder = RuntimeBuilder::new_multi_thread();
         assert_eq!(thread_pool_builder.common.worker_name, None);

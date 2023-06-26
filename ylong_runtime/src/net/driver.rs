@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
+use crate::cfg_ffrt;
 use crate::net::{Ready, ScheduleIO, Tick};
 use std::io;
-use std::mem::MaybeUninit;
 use std::ops::Deref;
-use std::sync::{Arc, Mutex, MutexGuard, Once};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use crate::util::bit::{Bit, Mask};
 use ylong_io::{EventTrait, Events, Interest, Poll, Source, Token};
@@ -55,23 +55,27 @@ pub(crate) struct Driver {
 pub(crate) struct Handle {
     inner: Arc<Inner>,
     #[cfg(not(feature = "ffrt"))]
-    waker: ylong_io::Waker,
+    pub(crate) waker: ylong_io::Waker,
 }
 
-impl Handle {
-    pub(crate) fn get_ref() -> &'static Self {
-        Driver::initialize();
-        unsafe {
-            &*HANDLE.as_ptr()
-        }
-    }
-}
+cfg_ffrt!(
+    use std::men::MaybeUninit;
+    static mut DRIVER: MaybeUninit<Mutex<Driver>> = MaybeUninit::uninit();
+    static mut HANDLE: MaybeUninit<Handle> = MaybeUninit::uninit();
+);
 
 #[cfg(feature = "ffrt")]
 impl Handle {
     fn new(inner: Arc<Inner>) -> Self {
         Handle {
             inner,
+        }
+    }
+
+    pub(crate) fn get_ref() -> &'static Self {
+        Driver::initialize();
+        unsafe {
+            &*HANDLE.as_ptr()
         }
     }
 }
@@ -115,14 +119,9 @@ pub(crate) struct Inner {
     registry: Arc<Poll>,
 }
 
-static mut DRIVER: MaybeUninit<Mutex<Driver>> = MaybeUninit::uninit();
-static mut HANDLE: MaybeUninit<Handle> = MaybeUninit::uninit();
-
 impl Driver {
     #[cfg(not(feature = "ffrt"))]
-    fn initialize() {
-        static ONCE: Once = Once::new();
-        ONCE.call_once(|| unsafe {
+    pub(crate) fn initialize() -> (Arc<Handle>, Arc<Mutex<Driver>>) {
             let poll = Poll::new().unwrap();
             let waker = ylong_io::Waker::new(&poll, WAKE_TOKEN)
                 .expect("ylong_io waker construction failed");
@@ -142,14 +141,13 @@ impl Driver {
                 tick: DRIVER_TICK_INIT,
                 poll: arc_poll,
             };
-            HANDLE = MaybeUninit::new(Handle::new(inner, waker));
-            DRIVER = MaybeUninit::new(Mutex::new(driver));
-        });
+            
+        (Arc::new(Handle::new(inner, waker)), Arc::new(Mutex::new(driver)))
     }
 
     #[cfg(feature = "ffrt")]
     fn initialize() {
-        static ONCE: Once = Once::new();
+        static ONCE: std::sync::Once = std::sync::Once::new();
         ONCE.call_once(|| unsafe {
             let poll = Poll::new().unwrap();
             let arc_poll = Arc::new(poll);
@@ -174,6 +172,7 @@ impl Driver {
     }
 
     /// Initializes the single instance IO driver.
+    #[cfg(feature = "ffrt")]
     pub(crate) fn try_get_mut() -> Option<MutexGuard<'static, Driver>>{
         Driver::initialize();
         unsafe {

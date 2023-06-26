@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-use crate::net::{ScheduleIO, Handle};
+use crate::net::ScheduleIO;
 use std::io;
 use std::ops::Deref;
 use ylong_io::{Interest, Source};
@@ -25,6 +25,8 @@ cfg_io!(
     use std::mem::MaybeUninit;
     use crate::io::ReadBuf;
     use crate::net::ReadyEvent;
+    #[cfg(not(feature = "ffrt"))]
+    use crate::executor::worker::{get_current_ctx, WorkerContext};
     use std::io::{Read, Write};
 );
 
@@ -51,7 +53,16 @@ impl<E: Source> AsyncSource<E> {
     /// If no reactor is found or fd registration fails, an error will be returned.
     ///
     pub fn new(mut io: E, interest: Option<Interest>) -> io::Result<AsyncSource<E>> {
-        let inner = Handle::get_ref();
+        #[cfg(not(feature = "ffrt"))]
+        let inner = {
+            let context = get_current_ctx().ok_or(io::Error::new(io::ErrorKind::Other, "get_current_ctx() fail"))?;
+            match context {
+                WorkerContext::Multi(ctx) => &ctx.handle,
+                WorkerContext::Curr(ctx) => &ctx.handle,
+            }
+        };
+        #[cfg(feature = "ffrt")]
+        let inner = crate::net::Handle::get_ref();
         // let inner = Driver::inner();
         let interest = interest.unwrap_or_else(|| Interest::WRITABLE.add(Interest::READABLE));
         let entry = inner.register_source(&mut io, interest)?;
@@ -214,7 +225,16 @@ impl<E: Source> Deref for AsyncSource<E> {
 impl<E: Source> Drop for AsyncSource<E> {
     fn drop(&mut self) {
         if let Some(mut io) = self.io.take() {
-            let inner = Handle::get_ref();
+            #[cfg(not(feature = "ffrt"))]
+            let inner = {
+                let context = get_current_ctx().expect("AsyncSource drop get_current_ctx() fail");
+                match context {
+                    WorkerContext::Multi(ctx) => &ctx.handle,
+                    WorkerContext::Curr(ctx) => &ctx.handle,
+                }
+            };
+            #[cfg(feature = "ffrt")]
+            let inner = crate::net::Handle::get_ref();
             let _ = inner.deregister_source(&mut io);
         }
     }

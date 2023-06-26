@@ -19,7 +19,6 @@
 extern crate core;
 
 use crate::error::ScheduleError;
-use crate::executor::block_on;
 use crate::macros::cfg_io;
 use crate::task::{JoinHandle, Task, TaskBuilder};
 use std::future::Future;
@@ -80,9 +79,8 @@ pub fn block_on<T>(task: T) -> T::Output
 where
     T: Future,
 {
-    #[cfg(any(feature = "time", feature = "net"))]
-    builder::initialize_reactor().expect("Initializing reactor thread failed during block_on");
-    block_on::block_on(task)
+    let rt = executor::global_default_async();
+    rt.block_on(task)
 }
 
 macro_rules! cfg_ffrt {

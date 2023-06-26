@@ -50,8 +50,14 @@ impl Future for YieldTask {
             // to avoid waking the waker immediately. This is because waking the waker in a worker
             // context will put the task in the lifo slot, we don't want that.
             if let Some(ctx) = ctx {
-                let mut yielded = ctx.yielded.borrow_mut();
-                yielded.push(cx.waker().clone());
+                match ctx {
+                    worker::WorkerContext::Multi(ctx) => {
+                        let mut yielded = ctx.worker.yielded.borrow_mut();
+                        yielded.push(cx.waker().clone());
+                    }
+                    #[cfg(feature = "net")]
+                    worker::WorkerContext::Curr(_) => cx.waker().wake_by_ref(),
+                }
             } else {
                 cx.waker().wake_by_ref();
             }
@@ -76,7 +82,8 @@ impl Future for YieldTask {
 #[cfg(not(feature = "ffrt"))]
 pub(crate) fn wake_yielded_tasks() {
     let ctx = worker::get_current_ctx().expect("not in a worker ctx");
-    let mut yielded = ctx.yielded.borrow_mut();
+    let ctx = worker::get_multi_worker_context!(ctx);
+    let mut yielded = ctx.worker.yielded.borrow_mut();
     if yielded.is_empty() {
         return;
     }

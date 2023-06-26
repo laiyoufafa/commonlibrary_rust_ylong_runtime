@@ -46,6 +46,8 @@ cfg_not_ffrt! {
     pub(crate) mod worker;
     use crate::builder::initialize_async_spawner;
     use crate::executor::async_pool::AsyncPoolSpawner;
+    #[cfg(feature = "net")]
+    use crate::net::Handle;
 }
 
 pub(crate) trait Schedule {
@@ -81,6 +83,8 @@ pub(crate) enum AsyncHandle {
 /// and possibility for function extension in the future.
 pub struct Runtime {
     pub(crate) async_spawner: AsyncHandle,
+    #[cfg(all(not(feature = "ffrt"), feature = "net"))]
+    pub(crate) handle: std::sync::Arc<Handle>,
 }
 
 pub(crate) fn global_default_async() -> &'static Runtime {
@@ -95,10 +99,18 @@ pub(crate) fn global_default_async() -> &'static Runtime {
                 *global_builder = Some(RuntimeBuilder::new_multi_thread());
             }
 
+            #[cfg(all(not(feature = "ffrt"), feature = "net"))]
+            let (arc_handle, arc_driver) = crate::net::Driver::initialize();
             #[cfg(not(feature = "ffrt"))]
-            let runtime = match initialize_async_spawner(global_builder.as_ref().unwrap()) {
+            let runtime = match initialize_async_spawner(
+                global_builder.as_ref().unwrap(),
+                #[cfg(feature = "net")]
+                (arc_handle.clone(), arc_driver),
+            ) {
                 Ok(s) => Runtime {
                     async_spawner: AsyncHandle::MultiThread(s),
+                    #[cfg(feature = "net")]
+                    handle: arc_handle,
                 },
                 Err(e) => panic!("initialize runtime failed: {:?}", e),
             };
@@ -261,13 +273,36 @@ impl Runtime {
     where
         T: Future<Output = R>,
     {
-        match &self.async_spawner {
+        // Registers io_handle to the current thread when block_on().
+        // so that async_source can get the handle and register it.
+        #[cfg(all(not(feature = "ffrt"), feature = "net"))]
+        let _cur_context = {
+            let cur_context = worker::WorkerContext::Curr(worker::CurrentWorkerContext {
+                handle: self.handle.clone(),
+            });
+            worker::CURRENT_WORKER.with(|ctx| {
+                ctx.set(&cur_context as *const _ as *const ());
+            });
+            cur_context
+        };
+
+        #[warn(clippy::let_and_return)]
+        let ret = match &self.async_spawner {
             #[cfg(feature = "current_thread_runtime")]
             AsyncHandle::CurrentThread(current_thread) => current_thread.block_on(task),
             #[cfg(not(feature = "ffrt"))]
             AsyncHandle::MultiThread(_) => block_on::block_on(task),
             #[cfg(feature = "ffrt")]
             AsyncHandle::FfrtMultiThread => block_on::block_on(task),
-        }
+        };
+
+        // Sets the current thread variable to null,
+        // otherwise the worker's CURRENT_WORKER can not be set under MultiThread.
+        #[cfg(all(not(feature = "ffrt"), feature = "net"))]
+        worker::CURRENT_WORKER.with(|ctx| {
+            ctx.set(std::ptr::null());
+        });
+
+        ret
     }
 }
