@@ -33,16 +33,9 @@ impl CurrentThreadBuilder {
 
     /// Initializes the runtime and returns its instance.
     pub fn build(&mut self) -> io::Result<Runtime> {
-        #[cfg(feature = "net")]
-        let (arc_handle, arc_driver) = crate::net::Driver::initialize();
-        let async_spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            arc_driver,
-        );
+        let async_spawner = CurrentThreadSpawner::new();
         Ok(Runtime {
             async_spawner: AsyncHandle::CurrentThread(async_spawner),
-            #[cfg(feature = "net")]
-            handle: arc_handle,
         })
     }
 }

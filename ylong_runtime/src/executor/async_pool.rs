@@ -57,7 +57,7 @@ pub(crate) struct MultiThreadScheduler {
     /// A set of all the local queues in the executor
     locals: Vec<LocalQueue>,
     #[cfg(feature = "net")]
-    io_handle: Arc<Handle>,
+    pub(crate) io_handle: Arc<Handle>,
 }
 
 const ACTIVE_WORKER_SHIFT: usize = 16;
@@ -401,13 +401,12 @@ fn async_thread_proc(
 }
 
 impl AsyncPoolSpawner {
-    pub(crate) fn new(
-        builder: &MultiThreadBuilder,
+    pub(crate) fn new(builder: &MultiThreadBuilder) -> Self {
         #[cfg(feature = "net")]
-        handle: Arc<Handle>
-    ) -> Self {
+        let (handle, driver) = Driver::initialize();
+
         let thread_num = builder.core_thread_size.unwrap_or_else(get_cpu_core);
-        AsyncPoolSpawner {
+        let spawner = AsyncPoolSpawner {
             inner: Arc::new(Inner {
                 total: thread_num,
                 is_affinity: builder.common.is_affinity,
@@ -424,7 +423,12 @@ impl AsyncPoolSpawner {
                     handle
                 )
             ),
-        }
+        };
+        spawner.create_async_thread_pool(
+            #[cfg(feature = "net")]
+            driver
+        );
+        spawner
     }
 
     pub(crate) fn create_async_thread_pool(
@@ -1070,15 +1074,8 @@ mod test {
      */
     #[test]
     fn ut_async_pool_spawner_new() {
-        #[cfg(feature = "net")]
-        let (arc_handle, _) = Driver::initialize();
-
         let thread_pool_builder = RuntimeBuilder::new_multi_thread();
-        let async_pool_spawner = AsyncPoolSpawner::new(
-            &thread_pool_builder,
-            #[cfg(feature = "net")]
-            arc_handle,
-        );
+        let async_pool_spawner = AsyncPoolSpawner::new(&thread_pool_builder);
         assert_eq!(
             async_pool_spawner.inner.total,
             thread_pool_builder
@@ -1104,18 +1101,9 @@ mod test {
     /// 3. This UT should not panic
     #[test]
     fn ut_async_pool_spawner_create_async_thread_pool_001() {
-        #[cfg(feature = "net")]
-        let (arc_handle, arc_driver) = Driver::initialize();
-
         let thread_pool_builder = RuntimeBuilder::new_multi_thread();
-        let async_pool_spawner = AsyncPoolSpawner::new(
-            &thread_pool_builder.is_affinity(false),
-            #[cfg(feature = "net")]
-            arc_handle,
-        );
-        async_pool_spawner.create_async_thread_pool(
-            #[cfg(feature = "net")]
-            arc_driver,
+        let _ = AsyncPoolSpawner::new(
+            &thread_pool_builder.is_affinity(false)
         );
     }
 
@@ -1127,18 +1115,9 @@ mod test {
     /// 3. This UT should not panic
     #[test]
     fn ut_async_pool_spawner_create_async_thread_pool_002() {
-        #[cfg(feature = "net")]
-        let (arc_handle, arc_driver) = Driver::initialize();
-
         let thread_pool_builder = RuntimeBuilder::new_multi_thread();
-        let async_pool_spawner = AsyncPoolSpawner::new(
-            &thread_pool_builder.is_affinity(true),        
-            #[cfg(feature = "net")]
-            arc_handle,
-        );
-        async_pool_spawner.create_async_thread_pool(
-            #[cfg(feature = "net")]
-            arc_driver,
+        let _ = AsyncPoolSpawner::new(
+            &thread_pool_builder.is_affinity(true),
         );
     }
 }

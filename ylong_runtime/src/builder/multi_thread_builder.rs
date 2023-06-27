@@ -56,20 +56,10 @@ impl MultiThreadBuilder {
     #[cfg(all(feature = "multi_instance_runtime", not(feature = "ffrt")))]
     pub fn build(&mut self) -> io::Result<Runtime> {
         use crate::builder::initialize_async_spawner;
-
-        #[cfg(feature = "net")]
-        let (arc_handle, arc_driver) = crate::net::Driver::initialize();
-
-        let async_spawner = initialize_async_spawner(
-            self,
-            #[cfg(feature = "net")]
-            (arc_handle.clone(), arc_driver),
-        )?;
+        let async_spawner = initialize_async_spawner(self)?;
 
         Ok(Runtime {
             async_spawner: AsyncHandle::MultiThread(async_spawner),
-            #[cfg(feature = "net")]
-            handle: arc_handle,
         })
     }
 
