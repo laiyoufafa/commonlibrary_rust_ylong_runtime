@@ -1,109 +1,69 @@
 # ylong_runtime
 
 ## 简介
-Rust语言在提供了``async``/``await``, ``Future``, ``Waker``等异步基础组件的同时，并不提供具体的异步运行时实现。而具体实现则需要用户自己构建，或者使用社区已构建好的异步运行时。这样的好处是用户可以在自己的使用场景做定制化的优化。
+Rust异步运行时库，用于生成并执行异步任务。主要分为Time, Sync, Parallel calculation, IO四个模块。
+
+### 图一 整体架构图
+![structure](./figure/structure.png)
+
+## 目录
+```
+ylong_runtime
+|── ylong_ffrt
+|    └── src                        # FFRT ffi封装
+|── ylong_io
+|    |── exmaples                   # ylong_io 代码示例
+|    |── src                        # ylong_io 源码
+|    |    └── sys                   # 操作系统相关io实现
+|    |         |── linux            # Linux 事件驱动IO实现
+|    |         └── windows          # Windows 事件驱动IO实现
+|── ylong_runtime                   
+|    |── benches                    # ylong_runtime 性能用例
+|    |── examples                   # ylong_runtime 代码示例
+|    |── src                        # ylong_runtime 源码
+|    |    |── builder               # Runtime builder实现
+|    |    |── executor              # Runtime executor实现
+|    |    |── ffrt                  # FFRT 适配
+|    |    |── fs                    # 异步文件IO实现
+|    |    |── io                    # 异步IO接口以及对外API
+|    |    |   └── buffered          # 异步缓存读写实现
+|    |    |── iter                  # 异步并行迭代器实现
+|    |    |   |── parallel          # 数据容器适配
+|    |    |   └── pariter           # 并行迭代核心业务实现
+|    |    |── net                   # 异步网络IO/Driver实现
+|    |    |   └── sys               # 系统IO异步实现
+|    |    |       └── tcp           # 异步TCP实现
+|    |    |── sync                  # 异步同步原语
+|    |    |   └── mpsc              # 单生产者多消费者通道实现
+|    |    |── task                  # 异步任务实现
+|    |    |── time                  # 定时器实现
+|    |    └── util                  # 公共组件
+|    |        |── core_affinity     # 绑核实现
+|    |        └── num_cpus          # 获取核数实现
+|    └── tests                      # ylong_runtime 测试用例
+└── ylong_runtime_macros            # ylong_runtime 宏实现
+```
 
 ## 编译构建
 
-1. 在Cargo.toml中引入ylong_runtime
+方法一：在Cargo.toml中引入ylong_runtime
 
 ```toml
 #[dependence]
 ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", version = "1.9.0", features = ["full"]}
 ```
 
-2. 在 BUILD.gn 合适的地方添加依赖
+如果需要编译ffrt版本，将ylong_ffrt目录下的``build_ffrt.rs``文件重命名为``build.rs``, 并设置`LD_LIBRARY_PATH`
+
+方法二：在 BUILD.gn 合适的地方添加依赖
 
 ```
-deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:ylong_runtime"]
+deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:lib"]
 ```
 
-## 使用说明
+## 用户指南
 
-### `ylong` 全局线程池
-
-```rust
-use std::net::{Ipv4Addr, SocketAddrV4};
-use ylong_runtime::io::*;
-use ylong_runtime::net::TcpListener;
-fn main() -> std::io::Result<()> {
-    ylong_runtime::block_on(async {
-        let ip = Ipv4Addr::new(127, 0, 0, 1);
-        let addr = SocketAddrV4::new(ip, 8080);
-        let listener = TcpListener::bind(addr.into()).await?;
-        loop {
-            let (mut stream, _) = listener.accept().await?;
-            stream.write_all("hello ylong".as_bytes());
-        }
-    })
-}
-
-```
-
-#### 线程池设置
-
-可以链式设置runtime的具体配置。必须在`block_on`，`spawn`之前设置，否则`runtime`会使用默认配置。
-
-```rust
-fn main() {
-    let _ = ylong_runtime::builder::RuntimeBuilder::new_multi_thread()
-        .worker_stack_size(10)
-    	.keep_alive_time(std::time::Duration::from_secs(10))
-        .build_global();
-
-    let fut = async {
-
-    };
-    let _ = ylong_runtime::block_on(fut);
-}
-```
-
-
-
-### `ylong` 调度框架非异步线程池(spawn_blocking)使用
-
-```rust
-fn main() {
-    let fut = async {
-        // 这里可以是闭包也可以是函数。
-        let join_handle = ylong_runtime::spawn_blocking(|| {});
-        // 等待任务执行完成
-        let _result = join_handle.await;
-    };
-    let _ = ylong_runtime::block_on(fut);
-}
-
-```
-
-
-
-### ParIter 功能介绍
-
-`ParIter` 及其相关接口定义于模块 `ylong_runtime::iter`，`ParIter`支持数据在线程中做并行迭代，一组数据会在线程中被分割，分割后的数据会在线程中并行执行迭代器中的操作。
-
-```rust
-use ylong_runtime::iter::prelude::*;
-
-fn main() {
-    ylong_runtime::block_on(fut());
-}
-
-async fn fut() {
-    let v = (1..30).into_iter().collect::<Vec<usize>>();
-    let sum = v.par_iter().map(|x| fibbo(*x)).sum().await.unwrap();
-    println!("{}", sum);
-}
-
-fn fibbo(i: usize) -> usize {
-    match i {
-        0 => 1,
-        1 => 1,
-        n => fibbo(n - 1) + fibbo(n - 2),
-    }
-}
-```
-
-
+详情内容请见[用户指南](./docs/user_guide.md)
 
 ## 致谢
 

@@ -1,24 +1,66 @@
 # ylong_runtime
 
 ## Introduction
-Rust language doesn't provide an asynchronous runtime. Instead, it provides basic primitives and functionalities such as ``async``, ``await``, ``Future``, and ``Waker``. Therefore, it's users' responsibilities to implement the runtime, or choose from an existing third party's runtime.
+Rust asynchronous runtime, provides functionalities such as spawning async tasks, async io, synchronization, parallel calculation.
+
+### Overall structure
+![structure](./figure/structure.png)
+
 
 ## Compile Build
 
-1. Introduce ylong_runtime in Cargo.toml
+Method 1: Introduce ylong_runtime in Cargo.toml
 
 ```toml
 #[dependence]
 ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", version = "1.9.0", features = ["full"]}
 ```
 
-2. Add dependencies to BUILD.gn where appropriate
+For compiling FFRT version of ylong_runtime, rename ``ylong_ffrt/build_ffrt.rs`` to ``ylong_ffrt/build.rs``, and export `LD_LIBRARY_PATH`
+
+Method 2: Add dependencies to BUILD.gn where appropriate
 
 ```
-deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:ylong_runtime"]
+deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:lib"]
 ```
 
-
+## directory
+```
+ylong_runtime
+|── ylong_ffrt
+|    └── src                        # FFRT rust ffi
+|── ylong_io
+|    |── exmaples                   # Examples of ylong_io 
+|    |── src                        # Source code of ylong_io
+|    |    └── sys                   # OS specific implementation
+|    |         |── linux            # Epoll driven io
+|    |         └── windows          # Iocp driven io
+|── ylong_runtime                   
+|    |── benches                    # Benchmarks of ylong_runtime
+|    |── examples                   # Examples of ylong_runtime
+|    |── src                        # Source code of ylong_runtime
+|    |    |── builder               # Runtime builder
+|    |    |── executor              # Runtime executor
+|    |    |── ffrt                  # FFRT adapter
+|    |    |── fs                    # Async fs components
+|    |    |── io                    # Async io traits and components
+|    |    |   └── buffered          # Async BufReader and BufWriter
+|    |    |── iter                  # Async parallel iterator
+|    |    |   |── parallel          # ParIter implementation for data containers
+|    |    |   └── pariter           # Core of pariter
+|    |    |── net                   # Async net io and net driver
+|    |    |   └── sys               # Async system io
+|    |    |       └── tcp           # Async Tcp
+|    |    |── sync                  # Runtime synchronization components
+|    |    |   └── mpsc              # Mpsc channels
+|    |    |── task                  # Async task components
+|    |    |── time                  # Timer components
+|    |    └── util                  # Utilities
+|    |        |── core_affinity     # Vore affinity components
+|    |        └── num_cpus          # Num cpus components
+|    └── tests                      # Sdv of ylong_runtime
+└── ylong_runtime_macros            # Macros for runtime
+```
 
 ## Usage
 
@@ -100,6 +142,10 @@ fn fibbo(i: usize) -> usize {
     }
 }
 ```
+
+## User Guide
+
+See [user_guide](./docs/user_guide.md)
 
 ## Acknowledgements
 
