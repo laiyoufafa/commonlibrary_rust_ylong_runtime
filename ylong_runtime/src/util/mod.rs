@@ -18,6 +18,7 @@
 pub mod bit;
 pub mod core_affinity;
 pub mod fastrand;
+pub(crate) mod link_list;
 pub mod num_cpus;
 pub mod slab;
 pub mod slots;
