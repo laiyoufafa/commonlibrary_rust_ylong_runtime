@@ -4,16 +4,23 @@
 Rust asynchronous runtime, provides functionalities such as spawning async tasks, async io, synchronization, parallel calculation.
 
 ### Overall structure
-![structure](./figure/structure.png)
+![structure](./figures/structure.png)
 
+### Crates inner relations
+![inner_dependencies](./figures/inner_dependencies.png)
+
+ylong_runtime depends on the other three crates.
+- ylong_io: provides event-driven net io, using epoll or iocp to achieve non-blocking tcp or udp
+- ylong_ffrt: provides function flow runtime APIs. It serves as an alternative scheduler for ylong_runtime.
+- ylong_macros: provides procedural macros for `select!` and ``main``/``test``.
 
 ## Compile Build
 
 Method 1: Introduce ylong_runtime in Cargo.toml
 
 ```toml
-#[dependence]
-ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", version = "1.9.0", features = ["full"]}
+#[dependencies]
+ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", features = ["full"]}
 ```
 
 For compiling FFRT version of ylong_runtime, rename ``ylong_ffrt/build_ffrt.rs`` to ``ylong_ffrt/build.rs``, and export `LD_LIBRARY_PATH`
@@ -27,6 +34,8 @@ deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:lib"]
 ## directory
 ```
 ylong_runtime
+|── docs                            # User guide
+|── figures                         # Structure figures in docspo
 |── ylong_ffrt
 |    └── src                        # FFRT rust ffi
 |── ylong_io

@@ -1,11 +1,10 @@
 [package]
 name = "ylong_io"
-version = "0.1.0"
-edition = "2018"
-description = "IO module of YLong"
-readme = "README.md"
+version = "1.0.0"
+edition = "2021"
+description = "Event Driven IO"
 license = "Apache-2.0"
-repository = "https://open.codehub.huawei.com/innersource/Ylong_Rust/ylong_rs/files?ref=master&filePath=src%2Fschedule%2Fylong_io"
+repository = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime"
 keywords = ["ylong", "io", "epoll"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
