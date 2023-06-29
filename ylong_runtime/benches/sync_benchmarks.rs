@@ -23,12 +23,13 @@ pub mod task_helpers;
 mod sync_benchmarks {
     extern crate test;
     use crate::task_helpers::*;
-    use test::Bencher;
-
+    #[cfg(unix)]
     use std::fs::File;
     use std::hint::black_box;
-    use std::io::{Read, Write};
+    #[cfg(unix)]
+    use std::io::prelude::*;
     use std::sync::mpsc;
+    use test::Bencher;
 
     #[bench]
     fn single_thread_run_1000_fibbo(b: &mut Bencher) {

@@ -348,7 +348,7 @@ impl Future for Readiness<'_> {
                     // waiters could also be accessed in other places, so get the lock
                     let waiters = schedule_io.waiters.lock().unwrap();
 
-                    let mut waiter = waiter.as_mut().unwrap().as_mut().get_mut().get();
+                    let waiter = waiter.as_mut().unwrap().as_mut().get_mut().get();
                     if (*waiter).is_ready {
                         *state = State::Done;
                     } else {
