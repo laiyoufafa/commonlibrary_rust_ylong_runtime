@@ -17,7 +17,7 @@
 /// Schedule strategy implementation, includes FIFO LIFO priority and work-stealing
 /// work-stealing strategy include stealing half of every worker or the largest amount of worker
 use crate::task::Task;
-use std::borrow::Borrow;
+
 use std::cell::UnsafeCell;
 use std::collections::linked_list::LinkedList;
 use std::mem::MaybeUninit;
@@ -420,7 +420,7 @@ impl GlobalQueue {
     }
 
     pub(super) fn get_global(&self) -> &Mutex<LinkedList<Task>> {
-        self.globals.borrow()
+        &self.globals
     }
 }
 
