@@ -445,12 +445,15 @@ mod test {
 
         let spawner = RuntimeBuilder::new_current_thread().build().unwrap();
         let addr = "127.0.0.1:8701".parse().unwrap();
-        spawner.spawn(ylong_tcp_server(addr));
+        let join_handle = spawner.spawn(ylong_tcp_server(addr));
+
         spawner.block_on(ylong_tcp_client(addr));
+        spawner.block_on(join_handle).unwrap();
 
         let spawner = RuntimeBuilder::new_current_thread().build().unwrap();
         let addr = "127.0.0.1:8702".parse().unwrap();
-        spawner.spawn(ylong_tcp_client(addr));
+        let join_handle = spawner.spawn(ylong_tcp_client(addr));
         spawner.block_on(ylong_tcp_server(addr));
+        spawner.block_on(join_handle).unwrap();
     }
 }

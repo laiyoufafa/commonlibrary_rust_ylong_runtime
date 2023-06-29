@@ -277,11 +277,11 @@ impl FromRawSocket for TcpStream {
 
 impl Source for TcpStream {
     fn register(&mut self, selector: &Selector, token: Token, interests: Interest) -> io::Result<()> {
-        self.state.register(selector,token,interests,self.as_raw_socket())
+        self.state.register(selector, token, interests, self.as_raw_socket())
     }
 
     fn reregister(&mut self, selector: &Selector, token: Token, interests: Interest) -> io::Result<()> {
-        self.state.reregister(selector,token,interests)
+        self.state.reregister(selector, token, interests)
     }
 
     fn deregister(&mut self, _selector: &Selector) -> io::Result<()> {
