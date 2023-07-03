@@ -225,10 +225,6 @@ impl Worker {
 
         while !inner.is_cancel {
             inner.parker.park();
-            if ctx.worker.lifo.borrow().is_some() {
-                inner.is_searching = !self.scheduler.wake_up_specific_one(self.index as usize);
-                break;
-            }
             if self.scheduler.is_parked(self.index as usize) {
                 self.check_cancel(inner);
                 continue;
