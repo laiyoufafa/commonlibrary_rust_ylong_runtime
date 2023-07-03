@@ -13,14 +13,13 @@
 #![cfg(target_os = "linux")]
 #![cfg(not(feature = "ffrt"))]
 use libc::getpid;
+use std::ffi::OsString;
 use std::fs;
 use ylong_runtime::builder::RuntimeBuilder;
 #[cfg(target_os = "linux")]
 use ylong_runtime::util::core_affinity::linux::get_other_thread_affinity;
 #[cfg(target_os = "linux")]
 use ylong_runtime::util::num_cpus::get_cpu_num;
-pub mod helpers;
-use helpers::dump_dir;
 
 // Simple asynchronous tasks
 async fn test_future(num: usize) -> usize {
@@ -38,6 +37,18 @@ async fn test_multi_future(i: usize, j: usize) -> usize {
 // Multi-level nested asynchronous tasks
 async fn test_nested_future(i: usize, j: usize) -> usize {
     test_multi_future(i, j).await
+}
+
+// Gets the pid of all current threads (including the main thread)
+unsafe fn dump_dir() -> Vec<OsString> {
+    let current_pid = getpid();
+    let dir = format!("/proc/{}/task", current_pid.to_string().as_str());
+    let mut result = Vec::new();
+
+    for entry in fs::read_dir(dir.as_str()).expect("read failed") {
+        result.push(entry.unwrap().file_name());
+    }
+    result
 }
 
 // Get the name of the thread based on the thread pid
