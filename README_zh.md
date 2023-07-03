@@ -1,14 +1,24 @@
 # ylong_runtime
 
 ## 简介
-Rust异步运行时库，用于生成并执行异步任务。主要分为Time, Sync, Parallel calculation, IO四个模块。
+Rust异步运行时库，用于生成并执行异步任务。同时提供了异步网络IO，异步文件IO，定时器，同步原语，并行迭代器等功能。
 
 ### 图一 整体架构图
-![structure](./figure/structure.png)
+![structure](./figures/structure.png)
+
+### 图二 模块间关系
+![inner_dependencies](./figures/inner_dependencies.png)
+
+ylong_runtime 依赖以下三个库
+- ylong_io: 提供了事件驱动型网络IO，通过epoll或iocp实现了非阻塞性的tcp和udp。
+- ylong_ffrt: 提供了Function Flow Runtime的接口，可作为ylong_runtime的底层调度器。
+- ylong_macros: 提供了ylong_runtime所需的过程宏功能，用于`select!`功能, 以及`main`/`test`。
 
 ## 目录
 ```
 ylong_runtime
+|── docs                            # 使用文档
+|── figures                         # 架构图
 |── ylong_ffrt
 |    └── src                        # FFRT ffi封装
 |── ylong_io
@@ -49,8 +59,8 @@ ylong_runtime
 方法一：在Cargo.toml中引入ylong_runtime
 
 ```toml
-#[dependence]
-ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", version = "1.9.0", features = ["full"]}
+#[dependencies]
+ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", features = ["full"]}
 ```
 
 如果需要编译ffrt版本，将ylong_ffrt目录下的``build_ffrt.rs``文件重命名为``build.rs``, 并设置`LD_LIBRARY_PATH`

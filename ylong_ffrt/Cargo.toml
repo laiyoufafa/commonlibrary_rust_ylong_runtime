@@ -1,12 +1,10 @@
 [package]
 name = "ylong_ffrt"
-version = "0.1.0"
-authors = ["f00567414 <fanchangchun@huawei.com>"]
+version = "1.0.0"
 edition = "2021"
-description = "Runtime Environment"
+description = "FFRT adapter"
 license = "Apache-2.0"
-readme = "README.md"
-repository = "https://open.codehub.huawei.com/innersource/Ylong_Rust/ylong_rs/files?ref=ylong_oh&filePath=src%2Fruntime%2Fylong_ffrt"
+repository = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime"
 keywords = ["ylong", "ffrt"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
