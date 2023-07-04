@@ -25,11 +25,14 @@ use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 cfg_io!(
     use std::time::Duration;
     use crate::net::Driver;
+    use crate::net::Handle;
 );
 
 pub(crate) struct CurrentThreadSpawner {
     pub(crate) scheduler: Arc<CurrentThreadScheduler>,
     parker: Arc<Parker>,
+    #[cfg(feature = "net")]
+    pub(crate) handle: Arc<Handle>,
 }
 
 #[derive(Default)]
@@ -109,13 +112,21 @@ fn drop(ptr: *const ()) {
 }
 
 impl CurrentThreadSpawner {
-    pub(crate) fn new(#[cfg(feature = "net")] driver: Arc<Mutex<Driver>>) -> Self {
+    #[cfg(not(feature = "net"))]
+    pub(crate) fn new() -> Self {
         Self {
             scheduler: Default::default(),
-            parker: Arc::new(Parker::new(
-                #[cfg(feature = "net")]
-                driver,
-            )),
+            parker: Arc::new(Parker::new()),
+        }
+    }
+
+    #[cfg(feature = "net")]
+    pub(crate) fn new() -> Self {
+        let (handle, driver) = crate::net::Driver::initialize();
+        Self {
+            scheduler: Default::default(),
+            parker: Arc::new(Parker::new(driver)),
+            handle,
         }
     }
 
@@ -191,8 +202,6 @@ mod test {
         }
     }
     use crate::executor::current_thread::CurrentThreadSpawner;
-    #[cfg(feature = "net")]
-    use crate::net::Driver;
     use crate::task::{yield_now, TaskBuilder};
     use std::future::Future;
     use std::pin::Pin;
@@ -300,30 +309,19 @@ mod test {
     /// 3.Check the running status of tasks in the queue when the yield task is awakened three times.
     #[test]
     fn ut_current_thread_spawn() {
-        #[cfg(feature = "net")]
-        let (_, driver) = Driver::initialize();
-        let spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver.clone(),
-        );
+        let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.block_on(YieldTask { cnt: 1 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
 
-        let spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver.clone(),
-        );
+        let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.block_on(YieldTask { cnt: 2 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
 
-        let spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver,
-        );
+        let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.spawn(&TaskBuilder::default(), async move { yield_now().await });
         spawner.block_on(YieldTask { cnt: 3 });
@@ -341,30 +339,19 @@ mod test {
     /// 3.Check the running status of tasks in the queue when the yield task is awakened three times.
     #[test]
     fn ut_current_thread_block_on() {
-        #[cfg(feature = "net")]
-        let (_, driver) = Driver::initialize();
-        let spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver.clone(),
-        );
+        let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.block_on(YieldTask { cnt: 1 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 2);
 
-        let spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver.clone(),
-        );
+        let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.block_on(YieldTask { cnt: 2 });
         assert_eq!(spawner.scheduler.inner.lock().unwrap().len(), 1);
 
-        let spawner = CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver,
-        );
+        let spawner = CurrentThreadSpawner::new();
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.spawn(&TaskBuilder::default(), async move { 1 });
         spawner.block_on(YieldTask { cnt: 3 });
@@ -382,30 +369,15 @@ mod test {
     #[test]
     #[cfg(feature = "sync")]
     fn ut_current_thread_run_queue() {
-        #[cfg(feature = "net")]
-        let (handle, driver) = Driver::initialize();
-        #[cfg(feature = "net")]
-        let _cur_context = {
-            let cur_context = crate::executor::worker::WorkerContext::Curr(
-                crate::executor::worker::CurrentWorkerContext { handle },
-            );
-            crate::executor::worker::CURRENT_WORKER.with(|ctx| {
-                ctx.set(&cur_context as *const _ as *const ());
-            });
-            cur_context
-        };
-
-        let spawner = Arc::new(CurrentThreadSpawner::new(
-            #[cfg(feature = "net")]
-            driver,
-        ));
+        use crate::builder::RuntimeBuilder;
+        let spawner = Arc::new(RuntimeBuilder::new_current_thread().build().unwrap());
 
         let finished = Arc::new(AtomicUsize::new(0));
 
         let finished_clone = finished.clone();
         let notify1 = Arc::new(Parker::new());
         let notify1_clone = notify1.clone();
-        spawner.spawn(&TaskBuilder::default(), async move {
+        spawner.spawn(async move {
             finished_clone.fetch_add(1, Release);
             notify1_clone.notify_one();
         });
@@ -413,7 +385,7 @@ mod test {
         let finished_clone = finished.clone();
         let notify2 = Arc::new(Parker::new());
         let notify2_clone = notify2.clone();
-        spawner.spawn(&TaskBuilder::default(), async move {
+        spawner.spawn(async move {
             finished_clone.fetch_add(1, Release);
             notify2_clone.notify_one();
         });
@@ -432,7 +404,7 @@ mod test {
         let finished_clone = finished.clone();
         let notify1 = Arc::new(Parker::new());
         let notify1_clone = notify1.clone();
-        spawner.spawn(&TaskBuilder::default(), async move {
+        spawner.spawn(async move {
             finished_clone.fetch_add(1, Release);
             notify1_clone.notify_one();
         });
@@ -440,7 +412,7 @@ mod test {
         let finished_clone = finished.clone();
         let notify2 = Arc::new(Parker::new());
         let notify2_clone = notify2.clone();
-        spawner.spawn(&TaskBuilder::default(), async move {
+        spawner.spawn(async move {
             finished_clone.fetch_add(1, Release);
             notify2_clone.notify_one();
         });
@@ -469,44 +441,16 @@ mod test {
     #[test]
     #[cfg(feature = "net")]
     fn ut_current_thread_io() {
-        use crate::executor::worker::{CurrentWorkerContext, WorkerContext, CURRENT_WORKER};
+        use crate::builder::RuntimeBuilder;
 
-        let (handle, driver) = Driver::initialize();
-
-        let spawner = CurrentThreadSpawner::new(driver);
+        let spawner = RuntimeBuilder::new_current_thread().build().unwrap();
         let addr = "127.0.0.1:8701".parse().unwrap();
-        spawner.spawn(&TaskBuilder::default(), ylong_tcp_server(addr));
-
-        #[cfg(feature = "net")]
-        let _cur_context = {
-            let cur_context = WorkerContext::Curr(CurrentWorkerContext { handle });
-            CURRENT_WORKER.with(|ctx| {
-                ctx.set(&cur_context as *const _ as *const ());
-            });
-            cur_context
-        };
-
+        spawner.spawn(ylong_tcp_server(addr));
         spawner.block_on(ylong_tcp_client(addr));
-        CURRENT_WORKER.with(|ctx| {
-            ctx.set(std::ptr::null());
-        });
 
-        let (handle, driver) = Driver::initialize();
-
-        let spawner = CurrentThreadSpawner::new(driver);
+        let spawner = RuntimeBuilder::new_current_thread().build().unwrap();
         let addr = "127.0.0.1:8702".parse().unwrap();
-        spawner.spawn(&TaskBuilder::default(), ylong_tcp_client(addr));
-        #[cfg(feature = "net")]
-        let _cur_context = {
-            let cur_context = WorkerContext::Curr(CurrentWorkerContext { handle });
-            CURRENT_WORKER.with(|ctx| {
-                ctx.set(&cur_context as *const _ as *const ());
-            });
-            cur_context
-        };
+        spawner.spawn(ylong_tcp_client(addr));
         spawner.block_on(ylong_tcp_server(addr));
-        CURRENT_WORKER.with(|ctx| {
-            ctx.set(std::ptr::null());
-        });
     }
 }

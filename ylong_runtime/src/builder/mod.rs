@@ -45,10 +45,6 @@ pub use multi_thread_builder::MultiThreadBuilder;
 use std::sync::Once;
 cfg_not_ffrt!(
     use crate::executor::async_pool::AsyncPoolSpawner;
-    #[cfg(feature = "net")]
-    use crate::net::{Driver, Handle};
-    #[cfg(feature = "net")]
-    use std::sync::Mutex;
 );
 
 /// A callback function to be executed in different stages of a thread's life-cycle
@@ -132,17 +128,8 @@ impl RuntimeBuilder {
 #[cfg(not(feature = "ffrt"))]
 pub(crate) fn initialize_async_spawner(
     builder: &MultiThreadBuilder,
-    #[cfg(feature = "net")] io_driver: (Arc<Handle>, Arc<Mutex<Driver>>),
 ) -> io::Result<AsyncPoolSpawner> {
-    let async_spawner = AsyncPoolSpawner::new(
-        builder,
-        #[cfg(feature = "net")]
-        io_driver.0,
-    );
-    async_spawner.create_async_thread_pool(
-        #[cfg(feature = "net")]
-        io_driver.1,
-    );
+    let async_spawner = AsyncPoolSpawner::new(builder);
 
     // initialize reactor
     #[cfg(any(feature = "net", feature = "time"))]

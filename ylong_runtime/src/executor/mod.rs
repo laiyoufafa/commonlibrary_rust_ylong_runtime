@@ -81,8 +81,17 @@ pub(crate) enum AsyncHandle {
 /// and possibility for function extension in the future.
 pub struct Runtime {
     pub(crate) async_spawner: AsyncHandle,
-    #[cfg(all(not(feature = "ffrt"), feature = "net"))]
-    pub(crate) handle: std::sync::Arc<Handle>,
+}
+
+#[cfg(all(not(feature = "ffrt"), feature = "net"))]
+impl Runtime {
+    fn get_handle(&self) -> std::sync::Arc<Handle> {
+        match &self.async_spawner {
+            #[cfg(feature = "current_thread_runtime")]
+            AsyncHandle::CurrentThread(s) => s.handle.clone(),
+            AsyncHandle::MultiThread(s) => s.exe_mng_info.io_handle.clone(),
+        }
+    }
 }
 
 pub(crate) fn global_default_async() -> &'static Runtime {
@@ -97,18 +106,10 @@ pub(crate) fn global_default_async() -> &'static Runtime {
                 *global_builder = Some(RuntimeBuilder::new_multi_thread());
             }
 
-            #[cfg(all(not(feature = "ffrt"), feature = "net"))]
-            let (arc_handle, arc_driver) = crate::net::Driver::initialize();
             #[cfg(not(feature = "ffrt"))]
-            let runtime = match initialize_async_spawner(
-                global_builder.as_ref().unwrap(),
-                #[cfg(feature = "net")]
-                (arc_handle.clone(), arc_driver),
-            ) {
+            let runtime = match initialize_async_spawner(global_builder.as_ref().unwrap()) {
                 Ok(s) => Runtime {
                     async_spawner: AsyncHandle::MultiThread(s),
-                    #[cfg(feature = "net")]
-                    handle: arc_handle,
                 },
                 Err(e) => panic!("initialize runtime failed: {:?}", e),
             };
@@ -276,7 +277,7 @@ impl Runtime {
         #[cfg(all(not(feature = "ffrt"), feature = "net"))]
         let _cur_context = {
             let cur_context = worker::WorkerContext::Curr(worker::CurrentWorkerContext {
-                handle: self.handle.clone(),
+                handle: self.get_handle(),
             });
             worker::CURRENT_WORKER.with(|ctx| {
                 ctx.set(&cur_context as *const _ as *const ());
