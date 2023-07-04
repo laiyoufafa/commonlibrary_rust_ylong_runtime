@@ -1,0 +1,22 @@
+diff --git a/inherit/rich.json b/inherit/rich.json
+index d0e522b..76de2d6 100644
+--- a/inherit/rich.json
++++ b/inherit/rich.json
+@@ -248,6 +248,10 @@
+         {
+           "component": "memory_utils",
+           "features": []
++        },
++        {
++          "component": "ylong_runtime_mod",
++          "features": []
+         }
+       ]
+     },
+@@ -1091,4 +1095,4 @@
+       ]
+     }
+   ]
+-}
+\ No newline at end of file
++}

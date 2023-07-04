@@ -19,6 +19,7 @@ ylong_runtime 依赖以下三个库
 ylong_runtime
 |── docs                            # 使用文档
 |── figures                         # 架构图
+|── patches                         # 门禁编译需要的补丁
 |── ylong_ffrt
 |    └── src                        # FFRT ffi封装
 |── ylong_io
