@@ -317,7 +317,7 @@ impl MultiThreadScheduler {
         }
 
         let num = self.locals.len();
-        let start = fast_random() >> 56;
+        let start = (fast_random() >> 56) as usize;
 
         for i in 0..num {
             let i = (start + i) % num;

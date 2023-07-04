@@ -200,7 +200,7 @@ macro_rules! select {
         // When a branch ready first, modify this variable to
         // branch's index to ensure that the branch is executed first.
         use $crate::util::fastrand::fast_random;
-        let mut random_number = fast_random();
+        let mut random_number = fast_random() as usize;
 
         let output = {
             let mut futures = ( $( $fut , )+ );

@@ -53,7 +53,7 @@ impl<E: Source> AsyncSource<E> {
     pub fn new(mut io: E, interest: Option<Interest>) -> io::Result<AsyncSource<E>> {
         #[cfg(not(feature = "ffrt"))]
         let inner = {
-            let context = get_current_ctx().ok_or(io::Error::new(io::ErrorKind::Other, "get_current_ctx() fail"))?;
+            let context = get_current_ctx().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "get_current_ctx() fail"))?;
             match context {
                 WorkerContext::Multi(ctx) => &ctx.handle,
                 WorkerContext::Curr(ctx) => &ctx.handle,
