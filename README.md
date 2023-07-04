@@ -12,7 +12,20 @@ Rust asynchronous runtime, provides functionalities such as spawning async tasks
 ylong_runtime depends on the other three crates.
 - ylong_io: provides event-driven net io, using epoll or iocp to achieve non-blocking tcp or udp
 - ylong_ffrt: provides function flow runtime APIs. It serves as an alternative scheduler for ylong_runtime.
-- ylong_macros: provides procedural macros for `select!` and ``main``/``test``.
+- ylong_macros: provides procedural macros for `select!`.
+
+### Runtime framework
+![runtime_framework](./figures/runtime_framework.png)
+
+ylong_runtime's APIs could be divided into four different modules:
+- Sync: Synchronization mechanism.
+- Async IO: Asynchronous net IO and file IO.
+- Parallel Calculation: Parallel iterator and concurrent calculation.
+- Timer: Asynchronous timer.
+
+For inner layer, there are Reactor and Executor:
+- Reactor: Listens to system events such as IO and also timer events. Wakes the corresponding tasks through the events.
+- Executor: Schedules and executes each tasks. There are two interchangeable executors for the runtime.
 
 ## Compile Build
 
@@ -68,7 +81,9 @@ ylong_runtime
 |    |        |── core_affinity     # Vore affinity components
 |    |        └── num_cpus          # Num cpus components
 |    └── tests                      # Sdv of ylong_runtime
-└── ylong_runtime_macros            # Macros for runtime
+└── ylong_runtime_macros
+     |── examples                   # Examples of ylong_macro
+     └── src                        # Procedural macro implementation for runtime
 ```
 
 ## Usage
