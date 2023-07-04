@@ -3,16 +3,29 @@
 ## 简介
 Rust异步运行时库，用于生成并执行异步任务。同时提供了异步网络IO，异步文件IO，定时器，同步原语，并行迭代器等功能。
 
-### 图一 整体架构图
+### 图1 整体架构图
 ![structure](./figures/structure.png)
 
-### 图二 模块间关系
+### 图2 模块间关系
 ![inner_dependencies](./figures/inner_dependencies.png)
 
 ylong_runtime 依赖以下三个库
 - ylong_io: 提供了事件驱动型网络IO，通过epoll或iocp实现了非阻塞性的tcp和udp。
 - ylong_ffrt: 提供了Function Flow Runtime的接口，可作为ylong_runtime的底层调度器。
-- ylong_macros: 提供了ylong_runtime所需的过程宏功能，用于`select!`功能, 以及`main`/`test`。
+- ylong_macros: 提供了ylong_runtime所需的过程宏功能，用于`select!`功能。
+
+### 图3 Runtime结构图
+![runtime_framework](./figures/runtime_framework.png)
+
+ylong_runtime对外API分为四个模块:
+- Sync: 同步原语
+- Async IO: 异步网络IO & 文件IO
+- Parallel Calculation: 并行计算
+- Timer: 异步计时器
+
+对内模块分为Reactor以及Executor
+- Reactor: 进行IO等系统事件以及Timer事件的监听，并通过监听到的事件唤醒对应任务。
+- Executor: 进行任务调度以及任务执行的主体，ylong_runtime拥有两个可互相替换的调度器。
 
 ## 目录
 ```
@@ -51,7 +64,9 @@ ylong_runtime
 |    |        |── core_affinity     # 绑核实现
 |    |        └── num_cpus          # 获取核数实现
 |    └── tests                      # ylong_runtime 测试用例
-└── ylong_runtime_macros            # ylong_runtime 宏实现
+└── ylong_runtime_macros
+     |── examples                   # ylong_runtime_macros 代码示例
+     └── src                        # ylong_runtime 过程宏实现
 ```
 
 ## 编译构建
