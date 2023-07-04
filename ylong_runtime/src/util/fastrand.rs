@@ -25,9 +25,9 @@ use std::num::Wrapping;
 /// ```rust
 /// use ylong_runtime::util::fastrand::fast_random;
 /// let rand = fast_random();
-/// assert!(rand <= usize::MAX);
+/// assert!(rand <= u64::MAX);
 /// ```
-pub fn fast_random() -> usize {
+pub fn fast_random() -> u64 {
     thread_local! {
         static RNG: Cell<Wrapping<u64>> = Cell::new(Wrapping(seed()));
     }
@@ -39,7 +39,7 @@ pub fn fast_random() -> usize {
         s ^= s >> 27;
         rng.set(s);
         s.0.wrapping_mul(0x2545_f491_4f6c_dd1d)
-    }) as usize
+    })
 }
 
 fn seed() -> u64 {
