@@ -49,6 +49,7 @@ deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:lib"]
 ylong_runtime
 |── docs                            # User guide
 |── figures                         # Structure figures in docspo
+|── patches                         # Patches for ci
 |── ylong_ffrt
 |    └── src                        # FFRT rust ffi
 |── ylong_io
