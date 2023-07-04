@@ -14,6 +14,15 @@
 //! # ylong_runtime
 //! A runtime for writing IO-bounded and CPU-bounded applications.
 
+#[cfg(all(
+    feature = "ffrt",
+    any(feature = "current_thread_runtime", feature = "multi_instance_runtime")
+))]
+compile_error!("Feature ffrt can not be enabled with feature current_thread_runtime or feature multi_instance_runtime");
+
+#[cfg(all(feature = "ffrt", not(target_os = "linux")))]
+compile_error!("Feature ffrt only works on linux currently");
+
 extern crate core;
 
 use crate::error::ScheduleError;
