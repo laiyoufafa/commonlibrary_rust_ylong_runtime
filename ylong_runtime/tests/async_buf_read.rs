@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fs;
 use std::io::SeekFrom;
 use ylong_runtime::fs::File;
 use ylong_runtime::io::{
@@ -234,4 +235,5 @@ fn sdv_buf_reader_seek() {
         assert_eq!(buf, "dolor".as_bytes());
     });
     ylong_runtime::block_on(handle1).unwrap();
+    assert!(fs::remove_file("./tests/buf_reader_seek_file").is_ok());
 }

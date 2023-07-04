@@ -11,6 +11,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fs;
 use std::io::{IoSlice, SeekFrom};
 use ylong_runtime::fs::File;
 use ylong_runtime::io::{AsyncBufWriter, AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
@@ -139,4 +140,5 @@ fn sdv_buf_writer_seek() {
         assert_eq!(buf, "dolor".as_bytes());
     });
     ylong_runtime::block_on(handle1).unwrap();
+    assert!(fs::remove_file("./tests/buf_writer_seek_file").is_ok());
 }
