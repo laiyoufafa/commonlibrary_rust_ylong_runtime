@@ -167,16 +167,6 @@ impl MultiThreadScheduler {
     }
 
     #[inline]
-    pub(crate) fn wake_up_specific_one(&self, worker_id: usize) -> bool {
-        if self.sleepers.pop_specific(worker_id) {
-            self.record.inc_active_num(false);
-            true
-        } else {
-            false
-        }
-    }
-
-    #[inline]
     pub(crate) fn is_parked(&self, worker_id: usize) -> bool {
         self.sleepers.is_parked(worker_id)
     }

@@ -32,18 +32,6 @@ impl Sleepers {
         workers.contains(&worker_id)
     }
 
-    pub(super) fn pop_specific(&self, worker_id: usize) -> bool {
-        let mut workers = self.workers.lock().unwrap();
-
-        for idx in 0..workers.len() {
-            if workers[idx] == worker_id {
-                workers.swap_remove(idx);
-                return true;
-            }
-        }
-        false
-    }
-
     pub(super) fn pop(&self) -> Option<usize> {
         let mut workers = self.workers.lock().unwrap();
         workers.pop()
