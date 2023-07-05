@@ -161,7 +161,7 @@ where
     P: ParallelIterator + Send,
     C: Consumer<P> + Send + Sync,
 {
-    if (par_iter.len() >> 1) <= min_split_len || split_time <= 0 {
+    if (par_iter.len() >> 1) <= min_split_len || split_time == 0 {
         return Ok(consumer.consume(par_iter));
     }
     let (left, right) = par_iter.split();
@@ -171,7 +171,7 @@ where
             return Ok(consumer.consume(left));
         }
     };
-    split_time = split_time >> 1;
+    split_time >>= 1;
     unsafe {
         let left = spawn_task_ffrt(task_builder, left, consumer, min_split_len, split_time);
         let right = spawn_task_ffrt(task_builder, right, consumer, min_split_len, split_time);

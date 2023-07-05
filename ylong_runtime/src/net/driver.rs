@@ -57,9 +57,10 @@ pub(crate) struct Handle {
 }
 
 cfg_ffrt!(
-    use std::men::MaybeUninit;
+    use std::mem::MaybeUninit;
     static mut DRIVER: MaybeUninit<Mutex<Driver>> = MaybeUninit::uninit();
     static mut HANDLE: MaybeUninit<Handle> = MaybeUninit::uninit();
+    use std::sync::MutexGuard;
 );
 
 #[cfg(feature = "ffrt")]
