@@ -11,10 +11,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use libc::getpid;
-use std::ffi::OsString;
-use std::fs;
-
 pub async fn test_future(num: usize) -> usize {
     num
 }
@@ -28,17 +24,4 @@ pub async fn test_multi_future_in_async(i: usize, j: usize) -> (usize, usize) {
 
 pub async fn test_async_in_async(i: usize, j: usize) -> (usize, usize) {
     test_multi_future_in_async(i, j).await
-}
-
-// Gets the pid of all current threads (including the main thread)
-#[allow(dead_code)]
-pub(crate) unsafe fn dump_dir() -> Vec<OsString> {
-    let current_pid = getpid();
-    let dir = format!("/proc/{}/task", current_pid.to_string().as_str());
-    let mut result = Vec::new();
-
-    for entry in fs::read_dir(dir.as_str()).expect("read failed") {
-        result.push(entry.unwrap().file_name());
-    }
-    result
 }
