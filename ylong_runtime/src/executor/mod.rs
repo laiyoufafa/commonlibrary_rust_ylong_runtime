@@ -275,15 +275,13 @@ impl Runtime {
         // Registers io_handle to the current thread when block_on().
         // so that async_source can get the handle and register it.
         #[cfg(all(not(feature = "ffrt"), feature = "net"))]
-        let _cur_context = {
-            let cur_context = worker::WorkerContext::Curr(worker::CurrentWorkerContext {
-                handle: self.get_handle(),
-            });
-            worker::CURRENT_WORKER.with(|ctx| {
-                ctx.set(&cur_context as *const _ as *const ());
-            });
-            cur_context
-        };
+        let cur_context = worker::WorkerContext::Curr(worker::CurrentWorkerContext {
+            handle: self.get_handle(),
+        });
+        #[cfg(all(not(feature = "ffrt"), feature = "net"))]
+        worker::CURRENT_WORKER.with(|ctx| {
+            ctx.set(&cur_context as *const _ as *const ());
+        });
 
         #[warn(clippy::let_and_return)]
         let ret = match &self.async_spawner {
