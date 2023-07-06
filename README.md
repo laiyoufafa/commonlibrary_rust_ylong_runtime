@@ -1,50 +1,64 @@
 # ylong_runtime
 
 ## Introduction
-Rust asynchronous runtime, provides functionalities such as spawning async tasks, async io, synchronization, parallel calculation.
+Rust asynchronous runtime, provides functionalities such as spawning async tasks, async io, async synchronization primitives, parallel calculation.
 
 ### Overall structure
 ![structure](./figures/structure.png)
 
+- `System Service`: System services that use Rust's asynchronous capabilities, including Request, IPC, NetStack, etc.
+- `Runtime`: Rust asynchronous runtime provides Rust asynchronous programming interface and task scheduling capabilities for system services. From the functional level, it can be divided into two layers: `ylong_runtime` and `ylong_io`:
+   - `ylong_runtime`: The functional body of the asynchronous runtime, which provides a large number of asynchronous version of the Rust std library interfaces, and also provides capabilities such as life cycle management and scheduling of user tasks.
+   - `ylong_io`: Relying on the `libc` library, combined with the epoll mechanism of the system, providing the non-blocking TCP and UDP functions, as the base of `ylong_runtime` asynchronous IO.
+- `libc`: Rust third party library, providing Rust encapsulation of system libc interface.
+- `Kernel`: Capabilities provided by the operating system kernel, such as socket, epoll, etc.
+
 ### Crates inner relations
 ![inner_dependencies](./figures/inner_dependencies.png)
 
-ylong_runtime depends on the other three crates.
-- ylong_io: provides event-driven net io, using epoll or iocp to achieve non-blocking tcp or udp
-- ylong_ffrt: provides function flow runtime APIs. It serves as an alternative scheduler for ylong_runtime.
-- ylong_macros: provides procedural macros for `select!`.
+`ylong_runtime` is the main crate of the repository, and users can directly rely on this library when using it. `ylong_runtime` depends on the following three crates:
 
-### Runtime framework
+- `ylong_io`: Provides nonblocking and event-driven TCP/UDP through epoll. Users do not need to directly depend on this library.
+- `ylong_ffrt`: Provides a Rust wrapper of the Function Flow Runtime interface, which can be used as the underlying task scheduler of `ylong_runtime`. Users can configure whether to use this scheduler through the feature `ffrt` of `ylong_runtime`, and this scheduler is used by default on OpenHarmony. Users do not need to directly depend on this library.
+- `ylong_macros`: The procedural macros required to implement `ylong_runtime`, currently mainly used to provide `select!` procedural macros. Users can configure whether to use this library through the feature `macros` of `ylong_runtime`, which is used by default on OpenHarmony. Users do not need to directly depend on this library.
+
+### ylong_runtime framework
 ![runtime_framework](./figures/runtime_framework.png)
 
-ylong_runtime's APIs could be divided into four different modules:
-- Sync: Synchronization mechanism.
-- Async IO: Asynchronous net IO and file IO.
-- Parallel Calculation: Parallel iterator and concurrent calculation.
-- Timer: Asynchronous timer.
+`ylong_runtime` external API is divided into four modules:
 
-For inner layer, there are Reactor and Executor:
-- Reactor: Listens to system events such as IO and also timer events. Wakes the corresponding tasks through the events.
-- Executor: Schedules and executes each tasks. There are two interchangeable executors for the runtime.
+- `Sync`: Asynchronous synchronization primitives, which can be used in an asynchronous context, including asynchronous mutex, read-write lock, semaphore, channel, etc.
+- `Async IO`: Asynchronous network IO & file IO, providing IO interfaces that can be used in an asynchronous context, including creation, closing, reading, writing of TCP, UDP, file.
+- `Parallel Calculation`: Parallel computing function, which supports automatic splitting of user data into multiple small tasks for parallel processing, and users can asynchronously wait for the processing results of tasks in an asynchronous context.
+- `Timer`: asynchronous timer, providing timing functions, including asynchronous sleep, interval, etc.
 
-## Compile Build
+The feature of the asynchronous interface is that waiting in the asynchronous context will not block the current thread, and the thread will automatically switch to the next executable task, thereby avoiding the waste of thread resources and improving the overall concurrency of the system.
 
-Method 1: Introduce ylong_runtime in Cargo.toml
+This capability of asynchronous interfaces is achieved through the `Reactor` and `Executor` modules:
+
+- `Reactor`: Monitors IO system events and Timer events, wakes up blocked tasks through the monitored events, and pushes the tasks to the task queue of `Executor`:
+   - `IO Driver`: IO event poller, checks whether there are IO events coming;
+   - `Timer Driver`: Timer event poller, checks whether a Timer is about to time out;
+- `Executor`: The subject of task scheduling and task execution. The task submitted by the user enters the task queue of `Executor` and is executed at the appropriate time. If a task is blocked during execution, `Executor` will select the next executable task to execute according to some strategies. `ylong_runtime` has two schedulers that are interchangeable:
+   - `ylong executor`: A task scheduler implemented in Rust.
+   - `FFRT executor`: Function Flow Runtime task scheduler, implemented in C++. This implementation is used by default on OpenHarmony.
+
+## Compile
+
+Method 1: Introduce `ylong_runtime` in `Cargo.toml`
 
 ```toml
 #[dependencies]
 ylong_runtime = { git = "https://gitee.com/openharmony-sig/commonlibrary_rust_ylong_runtime.git", features = ["full"]}
 ```
 
-For compiling FFRT version of ylong_runtime, rename ``ylong_ffrt/build_ffrt.rs`` to ``ylong_ffrt/build.rs``, and export `LD_LIBRARY_PATH`
-
-Method 2: Add dependencies to BUILD.gn where appropriate
+Method 2: Add dependencies to `BUILD.gn` where appropriate
 
 ```
 deps += ["//commonlibrary/rust/ylong_runtime/ylong_runtime:lib"]
 ```
 
-## directory
+## Directory
 ```
 ylong_runtime
 |── docs                            # User guide
@@ -87,91 +101,11 @@ ylong_runtime
      └── src                        # Procedural macro implementation for runtime
 ```
 
-## Usage
-
-### `ylong` global thread pool
-
-```rust
-use std::net::{Ipv4Addr, SocketAddrV4};
-use ylong_runtime::io::*;
-use ylong_runtime::net::TcpListener;
-fn main() -> std::io::Result<()> {
-    ylong_runtime::block_on(async {
-        let ip = Ipv4Addr::new(127, 0, 0, 1);
-        let addr = SocketAddrV4::new(ip, 8080);
-        let listener = TcpListener::bind(addr.into()).await?;
-        loop {
-            let (mut stream, _) = listener.accept().await?;
-            stream.write_all("hello ylong".as_bytes());
-        }
-    })
-}
-```
-
-
-#### Thread pool settings
-
-Users can set the config of the runtime, which must be set before `block_on` and `spawn`, otherwise `runtime` will use the default configuration.
-
-```rust
-fn main() {
-    let _ = ylong_runtime::builder::RuntimeBuilder::new_multi_thread()
-        .worker_stack_size(10)
-        .keep_alive_time(std::time::Duration::from_secs(10))
-        .build_global();
-    
-    let fut = async {
-
-    };
-    let _ = ylong_runtime::block_on(fut);
-}
-```
-
-### `ylong` scheduling framework non-asynchronous thread pool (spawn_blocking)
-
-```rust
-fn main() {
-    let fut = async {
-        // It could be a closure or function.
-        let join_handle = runtime.spawn_blocking(|| {});
-        // Waits the task until finished.
-        let _result = join_handle.await;
-    };
-    let _ = ylong_runtime::block_on(fut);
-}
-```
-
-
-### ParIter Introduction
-
-ParIter and its related interfaces are defined in the module `ylong_runtime::iter`. `ParIter` supports parallel iterations over threads, where a set of data is split and the split data performs the operations in the iterator in parallel over the threads.
-
-```rust
-use ylong_runtime::iter::prelude::*;
-
-fn main() {
-    ylong_runtime::block_on(fut());
-}
-
-async fn fut() {
-    let v = (1..30).into_iter().collect::<Vec<usize>>();
-    let sum = v.par_iter().map(|x| fibbo(*x)).sum().await.unwrap();
-    println!("{}", sum);
-}
-
-fn fibbo(i: usize) -> usize {
-    match i {
-        0 => 1,
-        1 => 1,
-        n => fibbo(n - 1) + fibbo(n - 2),
-    }
-}
-```
-
 ## User Guide
 
-See [user_guide](./docs/user_guide.md)
+See [user_guide](./docs/user_guide.md).
 
 ## Acknowledgements
 
-Based on the user's habit, the API of this library, after changing the original Rust standard library synchronous interface implementation to asynchronous, retains the original naming style of the standard library, such as``TcpStream::connect``, ``File::read``, ``File::write`` and so on. We also refer to some of Tokio's general API design ideas, and we would like to express our gratitude to the Rust standard library and Tokio
+Based on the user's habit, the API of this library, after changing the original Rust standard library synchronous interface implementation to asynchronous, retains the original naming style of the standard library, such as ``TcpStream::connect``, ``File::read``, ``File::write`` and so on. We also refer to some of Tokio's general API design ideas, and we would like to express our gratitude to the Rust standard library and Tokio.
+
